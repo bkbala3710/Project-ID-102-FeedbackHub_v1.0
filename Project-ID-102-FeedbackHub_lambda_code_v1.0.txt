@@ -1,0 +1,51 @@
+import json
+import boto3
+from datetime import datetime  # Import datetime module
+
+# Initialize DynamoDB client
+dynamodb = boto3.resource('dynamodb')
+table = dynamodb.Table('102-database-dynamoDB')  # Replace with your table name
+
+def lambda_handler(event, context):
+    try:
+        # Parse request body
+        body = json.loads(event.get("body", "{}"))  # Extract 'body' key
+        
+        name = body.get("name", "Anonymous")  # Defaults to "Anonymous" if empty
+        mobile = body.get("mobile", "Not Provided")  # Defaults to "Not Provided" if empty
+        feedback = body.get("feedback", "").strip()
+
+        # Ensure feedback is provided
+        if not feedback:
+            return {
+                "statusCode": 400,
+                "headers": {"Content-Type": "application/json"},
+                "body": json.dumps({"message": "Feedback is required!"})
+            }
+
+        # Generate formatted timestamp ID (DD/MM/YYYY HH:MM:SS)
+        timestamp_id = datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S")
+
+        # Store in DynamoDB
+        table.put_item(Item={
+            "id": timestamp_id,  # Human-readable timestamp as ID
+            "name": name,
+            "mobile": mobile,
+            "feedback": feedback
+        })
+
+        return {
+            "statusCode": 200,
+            "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*"
+            },
+            "body": json.dumps({"message": "Feedback successfully saved."})
+        }
+
+    except Exception as e:
+        return {
+            "statusCode": 500,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"error": str(e)})
+        }
